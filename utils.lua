@@ -1,6 +1,10 @@
 ----------------------------------------------------------------------
--- Collection of useful functions for Torch
---
+-- Collection of useful functions for Torch.
+--  - progress: progress bar with loss & accuracy output
+--  - MSRinit: init layer weights
+--  - makeDataParallelTable: enable multi-GPU
+--  - log: history log
+
 
 local utils = {}
 ----------------------------------------------------------------------
@@ -109,7 +113,7 @@ do
          tm = tm .. ' | Step: ' .. formatTime(step)
          io.write(tm)
 
-         -- print loss & accuracy. acc could be abscent (for regression probmels)
+         -- print loss & accuracy. acc could be abscent (for regression problems)
          if acc then
              io.write(string.format(' | loss: %.4f | acc: %.4f', loss, acc))
          else
@@ -174,6 +178,25 @@ function utils.makeDataParallelTable(net, nGPU)
         net = dpt:cuda()
     end
     return net
+end
+
+----------------------------------------------------------------
+-- log
+-- automatically create new log when training begins.
+-- no specific log file need.
+--
+function utils.addlog(...)
+    os.execute('mkdir log')
+    -- get history logPath or create a new one named after the current time
+    logPath = logPath or './log/'..sys.fexecute('date +"%Y-%m-%d-%H-%M-%S"')
+    local f = io.open(logPath, 'a')
+    for _,v in pairs({...}) do
+        if type(v) == 'number' then v = ('%.4f'):format(v) end
+        f:write(v..'\t')
+    end
+    f:write('\n')
+    f:flush()
+    f:close()
 end
 
 return utils

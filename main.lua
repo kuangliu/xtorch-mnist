@@ -10,7 +10,7 @@ require 'paths'
 utils = dofile('utils.lua')
 xtorch = dofile('xtorch.lua')
 
-----------------------------------------------------------------
+------------------------------------------------
 -- 1. prepare data
 --
 geometry = {32,32}
@@ -26,7 +26,7 @@ Y_train = trainData.labels
 X_test = testData.data
 Y_test = testData.labels
 
-----------------------------------------------------------------
+------------------------------------------------
 -- 2. define net
 --
 net = nn.Sequential()
@@ -39,7 +39,7 @@ net:add(nn.ReLU(true))
 net:add(nn.Dropout(0.2))
 net:add(nn.Linear(512, 10))
 
-----------------------------------------------------------------
+------------------------------------------------
 -- 3. init optimization params
 --
 optimState = {
@@ -52,7 +52,7 @@ optimState = {
 }
 
 opt = {
-    ----------- net options ------------------
+    ----------- net options --------------------
     net = net,
     ----------- data options -------------------
     X_train = X_train,
@@ -71,7 +71,7 @@ opt = {
     verbose = false
 }
 
-----------------------------------------------------------------
+------------------------------------------------
 -- 4. and fit!
 --
 xtorch.fit(opt)
