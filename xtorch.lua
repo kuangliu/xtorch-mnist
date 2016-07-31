@@ -2,6 +2,7 @@ local xtorch = {}
 
 function xtorch.fit(opt)
     xtorch.init(opt)
+
     for i = 1, opt.nEpoch do
         xtorch.train(opt)
         xtorch.test(opt)
@@ -12,7 +13,7 @@ end
 -- init global params
 --
 function xtorch.init(opt)
-    net = opt.net
+    net = utils.MSRinit(opt.net)
     parameters, gradParameters = net:getParameters()
     criterion = nn.CrossEntropyCriterion()
     confusion = optim.ConfusionMatrix(opt.nClass)

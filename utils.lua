@@ -5,7 +5,7 @@
 local utils = {}
 ----------------------------------------------------------------------
 -- time
-----------------------------------------------------------------------
+--
 function utils.formatTime(seconds)
    -- decompose:
    local floor = math.floor
@@ -36,8 +36,8 @@ local formatTime = xlua.formatTime
 
 ----------------------------------------------------------------------
 -- progress bar
--- Modified from xlua to give more information output.
-----------------------------------------------------------------------
+-- modified from xlua to give more information output.
+--
 do
    local function getTermLength()
       if sys.uname() == 'windows' then return 80 end
@@ -129,6 +129,51 @@ do
          io.flush()
       end
    end
+end
+
+----------------------------------------------------------------
+-- init layer weights
+--
+function utils.MSRinit(net)
+    -- init CONV layer
+    for _,layer in pairs(net:findModules('nn.SpatialConvolution')) do
+        local n = layer.kW*layer.kH*layer.nOutputPlane
+        layer.weight:normal(0, math.sqrt(2/n))
+        layer.bias:zero()
+    end
+
+    -- init BN layer
+    for _,layer in pairs(net:findModules('nn.SpatialBatchNormalization')) do
+        layer.weight:fill(1)
+        layer.bias:zero()
+    end
+
+    -- init FC layers
+    for _,layer in pairs(net:findModules'nn.Linear') do
+        layer.bias:zero()
+    end
+
+    return net
+end
+
+----------------------------------------------------------------
+-- enable multi-GPU
+--
+function utils.makeDataParallelTable(net, nGPU)
+    if nGPU > 1 then
+        local gpus = torch.range(1, nGPU):totable()
+        local fastest, benchmark = cudnn.fastest, cudnn.benchmark
+
+        local dpt = nn.DataParallelTable(1, true, true)
+                    :add(net, gpus)
+                    :threads(function()
+                        local cudnn = require 'cudnn'
+                        cudnn.fastest, cudnn.benchmark = fastest, benchmark
+                    end)
+        dpt.gradInput = nil
+        net = dpt:cuda()
+    end
+    return net
 end
 
 return utils

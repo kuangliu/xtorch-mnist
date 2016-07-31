@@ -27,23 +27,23 @@ X_test = testData.data
 Y_test = testData.labels
 
 ----------------------------------------------------------------
--- 2. define model
+-- 2. define net
 --
-model = nn.Sequential()
-model:add(nn.Reshape(1024))
-model:add(nn.Linear(1024, 512))
-model:add(nn.ReLU(true))
-model:add(nn.Dropout(0.2))
-model:add(nn.Linear(512, 512))
-model:add(nn.ReLU(true))
-model:add(nn.Dropout(0.2))
-model:add(nn.Linear(512, 10))
+net = nn.Sequential()
+net:add(nn.Reshape(1024))
+net:add(nn.Linear(1024, 512))
+net:add(nn.ReLU(true))
+net:add(nn.Dropout(0.2))
+net:add(nn.Linear(512, 512))
+net:add(nn.ReLU(true))
+net:add(nn.Dropout(0.2))
+net:add(nn.Linear(512, 10))
 
 ----------------------------------------------------------------
 -- 3. init optimization params
 --
 optimState = {
-    learningRate = 0.1,
+    learningRate = 0.01,
     learningRateDecay = 1e-7,
     weightDecay = 1e-4,
     momentum = 0.9,
@@ -52,8 +52,8 @@ optimState = {
 }
 
 opt = {
-    ----------- model options ------------------
-    net = model,
+    ----------- net options ------------------
+    net = net,
     ----------- data options -------------------
     X_train = X_train,
     Y_train = Y_train,
@@ -65,7 +65,7 @@ opt = {
     nClass = 10,
     ----------- optimization options -----------
     optimizer = 'SGD',
-    criterion = 'ClassNLLCriterion',
+    criterion = 'CrossEntropyCriterion',
     optimState = optimState,
     ----------- general options ----------------
     verbose = false
