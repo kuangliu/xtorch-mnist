@@ -3,8 +3,8 @@
 --  - progress: progress bar with loss & accuracy output
 --  - MSRinit: init layer weights
 --  - makeDataParallelTable: enable multi-GPU
---  - log: history log
-
+--  - log: auto history log
+--
 
 local utils = {}
 ----------------------------------------------------------------------
@@ -114,14 +114,12 @@ do
          io.write(tm)
 
          -- print loss & accuracy. acc could be abscent (for regression problems)
-         if acc then
-             io.write(string.format(' | loss: %.4f | acc: %.4f', loss, acc))
-         else
-             io.write(string.format(' | loss: %.4f', loss))
-         end
+         acc = acc or 0
+         io.write(string.format(' | loss: %.5f | acc: %.5f', loss, acc))
+
 
          -- go back to center of bar, and print progress
-         for i=1,35+#tm+barLength/2 do io.write('\b') end
+         for i=1,37+#tm+barLength/2 do io.write('\b') end
          io.write(' ', current, '/', goal, ' ')
          -- reset for next bar
          if (percent == barLength) then

@@ -62,7 +62,7 @@ function xtorch.train(opt)
             confusion:batchAdd(outputs, targets)
             confusion:updateValids()
             utils.progress(k, #indices, loss/k, confusion.totalValid)
-
+            
             return f, gradParameters
         end
 
