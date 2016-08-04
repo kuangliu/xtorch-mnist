@@ -14,23 +14,67 @@ end
 --
 function xtorch.init(opt)
     net = utils.MSRinit(opt.net)
-    parameters, gradParameters = net:getParameters()
     criterion = nn.CrossEntropyCriterion()
+
+    -- use GPU
+    if opt.backend == 'GPU' then
+        require 'cunn'
+        require 'cutorch'
+        cudnn = require 'cudnn'
+
+        -- insert a copy layer in the first place
+        net:insert(nn.Copy('torch.FloatTensor', 'torch.CudaTensor'), 1)
+
+        cudnn.convert(net, cudnn):cuda()
+        cudnn.fastest = true
+        cudnn.benchmark = true
+
+        if opt.nGPU == 1 then
+            cutorch.setDevice(1)
+        else
+            net = utils.makeDataParallelTable(net, opt.nGPU)
+        end
+
+        criterion = criterion:cuda()
+    end
+
+    print(net)
+
+    parameters, gradParameters = net:getParameters()
     confusion = optim.ConfusionMatrix(opt.nClass)
+
+    -- data loader
+    if not opt.nhorse or opt.nhorse == 1 then   -- single thread
+        horses = {}
+        function horses:addjob(f1, f2) f2(f1()) end
+        function horses:synchronize() end
+    else                                        -- multi thread
+        threads = require 'threads'
+        horses = threads.Threads(opt.nhorse,
+            function()
+                require 'torch'
+            end,
+            function(idx)
+                print('init thread '..idx)
+                -- dofile('listdataset.lua')
+                dofile('plaindataset.lua')
+            end
+        )
+    end
 end
 
 ----------------------------------------------------------------
 -- training
 --
 function xtorch.train(opt)
+    if opt.backend=='GPU' then cutorch.synchronize() end
     net:training()
 
     -- parse arguments
-    local X = opt.X_train
-    local Y = opt.Y_train
     local nEpoch = opt.nEpoch
     local batchSize = opt.batchSize
     local optimState = opt.optimState
+    local dataset = opt.dataset
     local c = require 'trepl.colorize'
 
     -- epoch tracker
@@ -38,72 +82,95 @@ function xtorch.train(opt)
     print(string.format(c.Cyan 'Epoch %d/%d', epoch, nEpoch))
 
     -- do one epoch
-    local indices = torch.randperm(X:size(1)):long():split(batchSize)
-    indices[#indices] = nil
+    trainLoss = 0
+    local epochSize = math.floor(dataset.ntrain/opt.batchSize)
+    local bs = opt.batchSize
+    for i = 1,epochSize do
+        horses:addjob(
+            -- the job callback (runs in data-worker thread)
+            function()
+                local inputs, targets = dataset:sample(bs)
+                return inputs, targets
+            end,
+            -- the end callback (runs in the main thread)
+            function (inputs, targets)
+                -- synchronize for each batch training
+                if opt.backend=='GPU' then cutorch.synchronize() end
+                -- if use GPU, convert to cuda tensor
+                targets = opt.backend=='GPU' and targets:cuda() or targets
 
-    local loss = 0
-    for k, v in pairs(indices) do
-        local inputs = X:index(1,v)
-        local targets = Y:index(1,v)
+                feval = function(x)
+                    if x~= parameters then
+                        parameters:copy(x)
+                    end
+                    gradParameters:zero()
 
-        feval = function(x)
-            if x~= parameters then
-                parameters:copy(x)
+                    local outputs = net:forward(inputs)
+                    local f = criterion:forward(outputs, targets)
+                    local df_do = criterion:backward(outputs, targets)
+                    net:backward(inputs, df_do)
+                    trainLoss = trainLoss + f
+
+                    -- display progress & loss
+                    confusion:batchAdd(outputs, targets)
+                    confusion:updateValids()
+                    utils.progress(i, epochSize, trainLoss/i, confusion.totalValid)
+                    return f, gradParameters
+                end
+                optim.sgd(feval, parameters, optimState)
+                if opt.backend=='GPU' then cutorch.synchronize() end
             end
-            gradParameters:zero()
-
-            local outputs = net:forward(inputs)
-            local f = criterion:forward(outputs, targets)
-            local df_do = criterion:backward(outputs, targets)
-            net:backward(inputs, df_do)
-            loss = loss + f
-
-            -- display progress, averaged loss & accuracy
-            confusion:batchAdd(outputs, targets)
-            confusion:updateValids()
-            utils.progress(k, #indices, loss/k, confusion.totalValid)
-            
-            return f, gradParameters
-        end
-
-        optim.sgd(feval, parameters, optimState)
+        )
     end
 
     if opt.verbose then print(confusion) end
-    confusion:zero() -- reset confusion for test
+    confusion:zero()     -- reset confusion for test
+    horses:synchronize() -- wait all horses back
+    if opt.backend=='GPU' then cutorch.synchronize() end
 end
 
 ----------------------------------------------------------------
 -- test
 --
 function xtorch.test(opt)
+    if opt.backend=='GPU' then cutorch.synchronize() end
     net:evaluate()
 
-    -- parse arguments
-    local X = opt.X_test
-    local Y = opt.Y_test
-    local batchSize = opt.batchSize
+    local dataset = opt.dataset
+    local epochSize = math.floor(dataset.ntest/opt.batchSize)
+    local bs = opt.batchSize
 
-    -- test over the given dataset
-    local indices = torch.randperm(X:size(1)):long():split(batchSize)
-    indices[#indices] = nil
+    testLoss = 0
+    for i = 1, epochSize do
+        horses:addjob(
+            function()
+                local inputs, targets = dataset:get(bs*(i-1)+1, bs*i)
+                return inputs, targets
+            end,
+            function(inputs, targets)
+                if opt.backend=='GPU' then cutorch.synchronize() end
+                targets = opt.backend=='GPU' and targets:cuda() or targets
 
-    local loss = 0
-    for k, v in pairs(indices) do
-        local inputs = X:index(1,v)
-        local targets = Y:index(1,v)
-        local outputs = net:forward(inputs)
-        local f = criterion:forward(outputs, targets)
-        loss = loss + f
+                -- cutorch.synchronize()
+                local outputs = net:forward(inputs)
+                local f = criterion:forward(outputs, targets)
+                -- cutorch.synchronize()
+                testLoss = testLoss + f
 
-        -- display progress
-        confusion:batchAdd(outputs, targets)
-        confusion:updateValids()
-        utils.progress(k, #indices, loss/k, confusion.totalValid)
+                -- display progress
+                confusion:batchAdd(outputs, targets)
+                confusion:updateValids()
+                utils.progress(i, epochSize, testLoss/i, confusion.totalValid)
+                if opt.backend=='GPU' then cutorch.synchronize() end
+            end
+        )
     end
 
     if opt.verbose then print(confusion) end
     confusion:zero()
+    horses:synchronize()
+    if opt.backend=='GPU' then cutorch.synchronize() end
+    print('\n')
 end
 
 return xtorch

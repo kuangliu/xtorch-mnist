@@ -26,18 +26,27 @@ Y_train = trainData.labels
 X_test = testData.data
 Y_test = testData.labels
 
+dofile('plaindataset.lua')
+ds = PlainDataset({
+    X_train = X_train,
+    Y_train = Y_train,
+    X_test = X_test,
+    Y_test = Y_test
+})
+
 ------------------------------------------------
 -- 2. define net
 --
 net = nn.Sequential()
 net:add(nn.Reshape(1024))
-net:add(nn.Linear(1024, 512))
-net:add(nn.ReLU(true))
-net:add(nn.Dropout(0.2))
-net:add(nn.Linear(512, 512))
-net:add(nn.ReLU(true))
-net:add(nn.Dropout(0.2))
-net:add(nn.Linear(512, 10))
+net:add(nn.Linear(1024, 10))
+-- net:add(nn.Linear(1024, 512))
+-- net:add(nn.ReLU(true))
+-- net:add(nn.Dropout(0.2))
+-- net:add(nn.Linear(512, 512))
+-- net:add(nn.ReLU(true))
+-- net:add(nn.Dropout(0.2))
+-- net:add(nn.Linear(512, 10))
 
 ------------------------------------------------
 -- 3. init optimization params
@@ -55,10 +64,8 @@ opt = {
     ----------- net options --------------------
     net = net,
     ----------- data options -------------------
-    X_train = X_train,
-    Y_train = Y_train,
-    X_test = X_test,
-    Y_test = Y_test,
+    dataset = ds,
+    nhorse = 1,   -- nb of threads to load data, default 1
     ----------- training options ---------------
     batchSize = 128,
     nEpoch = 5,
@@ -68,6 +75,7 @@ opt = {
     criterion = 'CrossEntropyCriterion',
     optimState = optimState,
     ----------- general options ----------------
+    backend = 'CPU',    -- CPU or GPU, default CPU
     verbose = false
 }
 
