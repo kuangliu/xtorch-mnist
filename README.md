@@ -1,21 +1,31 @@
 # xtorch: Torch extension for easy model training & test
 
-xtorch.fit(...) with:
-- model options
-    - net: network to be fit
+`xtorch.fit(opt)` with `opt`:
+- model options:
+    - `net`: network to be fit
 - data options:
-    - X_train: training samples
-    - Y_train: training targets
-    - X_test: test samples
-    - Y_test: test targets
+    - `plaindataset`:
+        - `X_train`: training samples
+        - `Y_train`: training targets
+        - `X_test`: test samples
+        - `Y_test`: test targets
+    - `listdataset`:
+        - `trainData`: training data path
+        - `trainList`: train data list path
+        - `testData`: test data path
+        - `testList`: test data list path
+        - `imsize`: image size when loading
+        - `imfunc`: image processing function when loading
+    - `nhorse`: nb of threads to load data, default 1
 - training options:
-    - batchSize: batch size
-    - nEpoch: nb of epochs to train
-    - nClass: nb of classes
+    - `batchSize`: batch size
+    - `nEpoch`: nb of epochs to train
+    - `nClass`: nb of classes
 - optimization options:
-    - optimizer: optimization algorithm
-    - optimState: optimization params
-    - criterion: criterion defined
-- verbose: show debug info
-
-TODO: replace X,Y with data provider/loader.
+    - `optimizer`: optimization algorithm
+    - `optimState`: optimization params
+    - `criterion`: criterion defined
+- general options:
+    - `backend`: use CPU/GPU
+    - `nGPU`: nb of GPUs to use, default 1
+    - `verbose`: show debug info
