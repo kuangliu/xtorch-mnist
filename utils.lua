@@ -172,7 +172,6 @@ function utils.makeDataParallelTable(net, nGPU)
                         local cudnn = require 'cudnn'
                         cudnn.fastest, cudnn.benchmark = fastest, benchmark
                     end)
-        dpt.gradInput = nil
         net = dpt:cuda()
     end
     return net

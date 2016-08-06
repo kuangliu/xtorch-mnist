@@ -39,14 +39,13 @@ ds = PlainDataset({
 --
 net = nn.Sequential()
 net:add(nn.Reshape(1024))
-net:add(nn.Linear(1024, 10))
--- net:add(nn.Linear(1024, 512))
--- net:add(nn.ReLU(true))
--- net:add(nn.Dropout(0.2))
--- net:add(nn.Linear(512, 512))
--- net:add(nn.ReLU(true))
--- net:add(nn.Dropout(0.2))
--- net:add(nn.Linear(512, 10))
+net:add(nn.Linear(1024, 512))
+net:add(nn.ReLU(true))
+net:add(nn.Dropout(0.2))
+net:add(nn.Linear(512, 512))
+net:add(nn.ReLU(true))
+net:add(nn.Dropout(0.2))
+net:add(nn.Linear(512, 10))
 
 ------------------------------------------------
 -- 3. init optimization params

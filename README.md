@@ -2,7 +2,7 @@
 
 `xtorch.fit(opt)` with `opt`:
 - model options:
-    - `net`: network to be fit
+    - `net`: network to fit
 - data options:
     - `plaindataset`:
         - `X_train`: training samples
@@ -11,7 +11,7 @@
         - `Y_test`: test targets
     - `listdataset`:
         - `trainData`: training data path
-        - `trainList`: train data list path
+        - `trainList`: training data list path
         - `testData`: test data path
         - `testList`: test data list path
         - `imsize`: image size when loading
