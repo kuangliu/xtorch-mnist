@@ -3,19 +3,23 @@
 `xtorch.fit(opt)` with `opt`:
 - model options:
     - `net`: network to fit
-- data options:
+- data options:  
     - `plaindataset`:
         - `X_train`: training samples
         - `Y_train`: training targets
         - `X_test`: test samples
         - `Y_test`: test targets
+        - `imsize`: image size when loading
     - `listdataset`:
         - `trainData`: training data path
         - `trainList`: training data list path
         - `testData`: test data path
         - `testList`: test data list path
         - `imsize`: image size when loading
-        - `imfunc`: image processing function when loading
+    - `classdataset`:
+        - `trainData`: training data path
+        - `testData`: test data path
+        - `imsize`: image size when loading
     - `nhorse`: nb of threads to load data, default 1
 - training options:
     - `batchSize`: batch size
