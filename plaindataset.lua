@@ -13,7 +13,7 @@ function PlainDataset:__init(args)
     end
 
     self.ntrain = self.X_train:size(1)
-    self.ntest = self.Y_train:size(1)
+    self.ntest = self.X_test:size(1)
 end
 
 ---------------------------------------------------------------
@@ -31,7 +31,7 @@ end
 --
 function PlainDataset:get(i1,i2)
     local indices = torch.range(i1,i2):long()
-    local X = self.X_train:index(1, indices)
-    local Y = self.Y_train:index(1, indices)
+    local X = self.X_test:index(1, indices)
+    local Y = self.Y_test:index(1, indices)
     return X, Y
 end

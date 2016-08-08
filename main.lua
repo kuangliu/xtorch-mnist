@@ -51,7 +51,7 @@ net:add(nn.Linear(512, 10))
 -- 3. init optimization params
 --
 optimState = {
-    learningRate = 0.01,
+    learningRate = 0.001,
     learningRateDecay = 1e-7,
     weightDecay = 1e-4,
     momentum = 0.9,
