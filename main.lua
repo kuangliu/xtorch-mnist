@@ -75,7 +75,7 @@ opt = {
     optimState = optimState,
     ----------- general options ----------------
     backend = 'CPU',    -- CPU or GPU, default CPU
-    verbose = false
+    verbose = true
 }
 
 ------------------------------------------------

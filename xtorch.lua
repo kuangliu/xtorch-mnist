@@ -138,10 +138,10 @@ function xtorch.train()
         )
     end
 
+    xtorch.cudaSync()
+    horses:synchronize() -- wait all horses back
     if opt.verbose then print(confusion) end
     confusion:zero()     -- reset confusion for test
-    horses:synchronize() -- wait all horses back
-    if opt.backend=='GPU' then cutorch.synchronize() end
 end
 
 ----------------------------------------------------------------
@@ -179,10 +179,10 @@ function xtorch.test()
         )
     end
 
+    xtorch.cudaSync()
+    horses:synchronize()
     if opt.verbose then print(confusion) end
     confusion:zero()
-    horses:synchronize()
-    xtorch.cudaSync()
     print('\n')
 end
 
