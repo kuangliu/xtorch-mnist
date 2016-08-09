@@ -118,8 +118,8 @@ function xtorch.train()
                     if x~= parameters then
                         parameters:copy(x)
                     end
-                    gradParameters:zero()
 
+                    net:zeroGradParameters()
                     local outputs = net:forward(inputs)
                     local f = criterion:forward(outputs, targets)
                     local df_do = criterion:backward(outputs, targets)
