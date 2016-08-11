@@ -10,6 +10,17 @@ require 'paths'
 utils = dofile('utils.lua')
 xtorch = dofile('xtorch.lua')
 
+cmdopt = lapp[[
+    --lr                    (default 0.001)             learning rate
+    --nhorse                (default 1)                 nb of threads to load data
+    --batchSize             (default 128)               batch size
+    --nEpoch                (default 200)               nb of epochs
+    --backend               (default CPU)               use CPU/GPU
+    --nGPU                  (default 2)                 nb of GPUs to use
+    --resume                                            resume from checkpoint
+    --verbose                                           show debug information
+]]
+
 ------------------------------------------------
 -- 1. prepare data
 --
@@ -64,20 +75,14 @@ opt = {
     net = net,
     ----------- data options -------------------
     dataset = ds,
-    nhorse = 1,   -- nb of threads to load data, default 1
-    ----------- training options ---------------
-    batchSize = 128,
-    nEpoch = 5,
     nClass = 10,
     ----------- optimization options -----------
     optimizer = optim.sgd,
     criterion = nn.CrossEntropyCriterion,
-    optimState = optimState,
-    ----------- general options ----------------
-    backend = 'CPU',    -- CPU or GPU, default CPU
-    resume = true,
-    verbose = true
+    optimState = optimState
 }
+
+opt = utils.merge(opt, cmdopt)
 
 ------------------------------------------------
 -- 4. and fit!

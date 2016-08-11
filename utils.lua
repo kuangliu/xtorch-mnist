@@ -241,4 +241,14 @@ function utils.loadCheckpoint()
     return torch.load(latestPath)
 end
 
+----------------------------------------------------------------
+-- merge table
+--
+function utils.merge(A, B)
+    for k,v in pairs(B) do
+        A[k] = v
+    end
+    return A
+end
+
 return utils
