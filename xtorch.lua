@@ -3,8 +3,27 @@ local opt
 
 function xtorch.fit(opt_)
     opt = opt_
-    xtorch.init()
+    if opt.backend == 'GPU' then
+        require 'cunn'
+        require 'cutorch'
+        cudnn = require 'cudnn'
+    end
 
+    -- init model
+    if opt.resume then  -- load checkpoint
+        xtorch.resume()
+    else                -- load new model
+        xtorch.init()
+    end
+
+    parameters, gradParameters = net:getParameters()
+    confusion = optim.ConfusionMatrix(opt.nClass)
+    criterion = opt.backend=='GPU' and opt.criterion():cuda() or opt.criterion()
+
+    -- init data loader/horses
+    xtorch.initDataLoader()
+
+    -- main loop
     for i = 1, opt.nEpoch do
         xtorch.train()
         xtorch.test()
@@ -12,18 +31,26 @@ function xtorch.fit(opt_)
 end
 
 ----------------------------------------------------------------
--- init global params
+-- resume model from checkpoint
+--
+function xtorch.resume()
+    print('==> resuming from checkpoint..')
+    local latest = utils.loadCheckpoint()
+    epoch = latest.epoch
+    net = torch.load(latest.modelfile)
+    optimState = torch.load(latest.optimfile)
+    bestAcc = latest.bestAcc
+    print(net)
+end
+
+----------------------------------------------------------------
+-- init new model
 --
 function xtorch.init()
-    net = utils.MSRinit(opt.net)
-    criterion = nn.CrossEntropyCriterion()
-
+    print('==> init new model..')
+    net = opt.net
     -- use GPU
     if opt.backend == 'GPU' then
-        require 'cunn'
-        require 'cutorch'
-        cudnn = require 'cudnn'
-
         cudnn.convert(net, cudnn):cuda()
         cudnn.fastest = true
         cudnn.benchmark = true
@@ -41,15 +68,16 @@ function xtorch.init()
         end
         net_:add(net)
         net = net_
-        criterion = criterion:cuda()
     end
 
+    net = utils.MSRinit(net)
     print(net)
+end
 
-    parameters, gradParameters = net:getParameters()
-    confusion = optim.ConfusionMatrix(opt.nClass)
-
-    -- data loader
+----------------------------------------------------------------
+-- init data loader
+--
+function xtorch.initDataLoader()
     if opt.nhorse == 1 or opt.nhorse == nil then   -- default single thread
         horses = {}
         function horses:addjob(f1, f2) f2(f1()) end
@@ -63,7 +91,8 @@ function xtorch.init()
             end,
             function(idx)
                 print('init thread '..idx)
-                -- dofile('listdataset.lua')
+                dofile('listdataset.lua')
+                dofile('classdataset.lua')
                 dofile('plaindataset.lua')
             end
         )
@@ -132,14 +161,14 @@ function xtorch.train()
                     utils.progress(i, epochSize, trainLoss/i, confusion.totalValid)
                     return f, gradParameters
                 end
-                optim.sgd(feval, parameters, optimState)
+                opt.optimizer(feval, parameters, optimState)
                 xtorch.cudaSync()
             end
         )
     end
 
-    xtorch.cudaSync()
     horses:synchronize() -- wait all horses back
+    xtorch.cudaSync()
     if opt.verbose then print(confusion) end
     confusion:zero()     -- reset confusion for test
 end
@@ -179,8 +208,17 @@ function xtorch.test()
         )
     end
 
-    xtorch.cudaSync()
     horses:synchronize()
+    xtorch.cudaSync()
+
+    -- save checkpoint
+    bestAcc = bestAcc or -math.huge
+    if confusion.totalValid > bestAcc then
+        print('saving..')
+        bestAcc = confusion.totalValid
+        utils.saveCheckpoint(net, epoch, optimState, bestAcc)
+    end
+
     if opt.verbose then print(confusion) end
     confusion:zero()
     print('\n')

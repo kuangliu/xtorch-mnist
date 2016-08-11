@@ -70,11 +70,12 @@ opt = {
     nEpoch = 5,
     nClass = 10,
     ----------- optimization options -----------
-    optimizer = 'SGD',
-    criterion = 'CrossEntropyCriterion',
+    optimizer = optim.sgd,
+    criterion = nn.CrossEntropyCriterion,
     optimState = optimState,
     ----------- general options ----------------
     backend = 'CPU',    -- CPU or GPU, default CPU
+    resume = true,
     verbose = true
 }
 

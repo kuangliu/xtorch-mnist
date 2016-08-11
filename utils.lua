@@ -4,6 +4,8 @@
 --  - MSRinit: init layer weights
 --  - makeDataParallelTable: enable multi-GPU
 --  - log: auto history log
+--  - saveCheckpoint: save checkpoint
+--  - loadCheckpoint: load checkpoint
 --
 
 local utils = {}
@@ -117,6 +119,7 @@ do
          acc = acc or 0
          io.write(string.format(' | loss: %.5f | acc: %.5f', loss, acc))
 
+
          -- go back to center of bar, and print progress
          for i=1,37+#tm+barLength/2 do io.write('\b') end
          io.write(' ', current, '/', goal, ' ')
@@ -137,17 +140,31 @@ end
 --
 function utils.MSRinit(net)
     -- init CONV layer
-    for _,layer in pairs(net:findModules('nn.SpatialConvolution')) do
-        local n = layer.kW*layer.kH*layer.nOutputPlane
-        layer.weight:normal(0, math.sqrt(2/n))
-        layer.bias:zero()
+    local function initconv(name)
+        for _,layer in pairs(net:findModules(name)) do
+            local n = layer.kW*layer.kH*layer.nOutputPlane
+            layer.weight:normal(0,math.sqrt(2/n))
+            if cudnn.version >= 4000 then
+                layer.bias = nil
+                layer.gradBias = nil
+            else
+                layer.bias:zero()
+            end
+        end
     end
 
-    -- init BN layer
-    for _,layer in pairs(net:findModules('nn.SpatialBatchNormalization')) do
-        layer.weight:fill(1)
-        layer.bias:zero()
+    -- init BN layers
+    local function initbn(name)
+        for _,layer in pairs(net:findModules(name)) do
+            layer.weight:fill(1)
+            layer.bias:zero()
+        end
     end
+
+    initconv('cudnn.SpatialConvolution')
+    initconv('nn.SpatialConvolution')
+    initbn('cudnn.SpatialBatchNormalization')
+    initbn('nn.SpatialBatchNormalization')
 
     -- init FC layers
     for _,layer in pairs(net:findModules'nn.Linear') do
@@ -179,10 +196,10 @@ end
 ----------------------------------------------------------------
 -- log
 -- automatically create new log when training begins.
--- no specific log file need.
+-- no specific log file needed.
 --
 function utils.addlog(...)
-    os.execute('mkdir log')
+    paths.mkdir('log')
     -- get history logPath or create a new one named after the current time
     logPath = logPath or './log/'..sys.fexecute('date +"%Y-%m-%d-%H-%M-%S"')
     local f = io.open(logPath, 'a')
@@ -193,6 +210,35 @@ function utils.addlog(...)
     f:write('\n')
     f:flush()
     f:close()
+end
+
+-------------------------------------------------------------------
+-- save checkpoint
+--
+function utils.saveCheckpoint(net, epoch, optimState, bestAcc)
+    paths.mkdir('checkpoint')
+    local cpt = './checkpoint/'
+    local modelfile = paths.concat(cpt, 'model.t7')
+    local optimfile = paths.concat(cpt, 'optimState.t7')
+    local latest = paths.concat(cpt, 'latest.t7')
+
+    torch.save(modelfile, net)
+    torch.save(optimfile, optimState)
+    torch.save(latest, {
+        epoch = epoch,
+        modelfile = modelfile,
+        optimfile = optimfile,
+        bestAcc = bestAcc
+    })
+end
+
+----------------------------------------------------------------
+-- load checkpoint
+--
+function utils.loadCheckpoint()
+    local latestPath = './checkpoint/latest.t7'
+    assert(paths.filep(latestPath), 'Latest checkpoint not exist!')
+    return torch.load(latestPath)
 end
 
 return utils
